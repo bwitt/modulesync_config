@@ -32,53 +32,31 @@ def update_badges(readme_path)
   forge_slug = metadata.name.sub('-', '/')
   license_text = metadata.license ? "#{metadata.license} License" : 'License'
 
-  badges = {
-    'Build Status' => {
-      regex: /\[!\[Build Status\]\(.*?\)\].*?\)/,
-      replacement: "[![Build Status](https://github.com/#{org_name}/#{module_name}/actions/workflows/ci.yml/badge.svg)](https://github.com/#{org_name}/#{module_name}/actions/workflows/ci.yml)"
-    },
-    'Release' => {
-      regex: /\[!\[Release\]\(.*?\)\].*?\)/,
-      replacement: "[![Release](https://github.com/#{org_name}/#{module_name}/actions/workflows/release.yml/badge.svg)](https://github.com/#{org_name}/#{module_name}/actions/workflows/release.yml)"
-    },
-    'Puppet Forge' => {
-      regex: /\[!\[Puppet Forge\]\(.*?\)\].*?\)/,
-      replacement: "[![Puppet Forge](https://img.shields.io/puppetforge/v/#{forge_slug}.svg)](https://forge.puppetlabs.com/#{forge_slug})"
-    },
-    'Puppet Forge - downloads' => {
-      regex: /\[!\[Puppet Forge - downloads\]\(.*?\)\].*?\)/,
-      replacement: "[![Puppet Forge - downloads](https://img.shields.io/puppetforge/dt/#{forge_slug}.svg)](https://forge.puppetlabs.com/#{forge_slug})"
-    },
-    'Puppet Forge - endorsement' => {
-      regex: /\[!\[Puppet Forge - endorsement\]\(.*?\)\].*?\)/,
-      replacement: "[![Puppet Forge - endorsement](https://img.shields.io/puppetforge/e/#{forge_slug}.svg)](https://forge.puppetlabs.com/#{forge_slug})"
-    },
-    'Puppet Forge - scores' => {
-      regex: /\[!\[Puppet Forge - scores\]\(.*?\)\].*?\)/,
-      replacement: "[![Puppet Forge - scores](https://img.shields.io/puppetforge/f/#{forge_slug}.svg)](https://forge.puppetlabs.com/#{forge_slug})"
-    },
-    'puppetmodule.info docs' => {
-      regex: /\[!\[puppetmodule\.info docs\]\(.*?\)\].*?\)/,
-      replacement: "[![puppetmodule.info docs](http://www.puppetmodule.info/images/badge.png)](http://www.puppetmodule.info/m/#{module_name})"
-    },
-    'License' => {
-      regex: /\[!\[.*?License\]\(.*?\)\].*?\)/,
-      replacement: "[![#{license_text}](https://img.shields.io/github/license/#{org_name}/#{module_name}.svg)](LICENSE)"
-    }
-  }
+  new_badges = [
+    "[![Build Status](https://github.com/#{org_name}/#{module_name}/actions/workflows/ci.yml/badge.svg)](https://github.com/#{org_name}/#{module_name}/actions/workflows/ci.yml)",
+    "[![Release](https://github.com/#{org_name}/#{module_name}/actions/workflows/release.yml/badge.svg)](https://github.com/#{org_name}/#{module_name}/actions/workflows/release.yml)",
+    "[![Puppet Forge](https://img.shields.io/puppetforge/v/#{forge_slug}.svg)](https://forge.puppetlabs.com/#{forge_slug})",
+    "[![Puppet Forge - downloads](https://img.shields.io/puppetforge/dt/#{forge_slug}.svg)](https://forge.puppetlabs.com/#{forge_slug})",
+    "[![Puppet Forge - endorsement](https://img.shields.io/puppetforge/e/#{forge_slug}.svg)](https://forge.puppetlabs.com/#{forge_slug})",
+    "[![Puppet Forge - scores](https://img.shields.io/puppetforge/f/#{forge_slug}.svg)](https://forge.puppetlabs.com/#{forge_slug})",
+    "[![puppetmodule.info docs](http://www.puppetmodule.info/images/badge.png)](http://www.puppetmodule.info/m/#{module_name})",
+    "[![#{license_text}](https://img.shields.io/github/license/#{org_name}/#{module_name}.svg)](LICENSE)"
+  ]
 
-  changed = false
-  badges.each do |name, data|
-    if content.match?(data[:regex])
-      new_content = content.gsub(data[:regex], data[:replacement])
-      if new_content != content
-        content = new_content
-        changed = true
+  # Regex to match a block of badges (lines starting with [![...)
+  # Note: We do NOT use /m modifier so that . does not match newlines
+  badge_block_regex = /(?:^\s*\[!\[.*?\]\(.*?\).*$\n?)+/
+
+  if content.match?(badge_block_regex)
+    content = content.sub(badge_block_regex) do |match|
+      # Preserve "Donated by" badge if present
+      if match.include?("Donated by")
+        donated_line = match.lines.find { |l| l.include?("Donated by") }
+        new_badges << donated_line.strip if donated_line
       end
+      new_badges.join("\n") + "\n"
     end
-  end
-
-  if changed
+    
     File.write(readme_path, content)
     puts "Updated #{readme_path}"
   end
