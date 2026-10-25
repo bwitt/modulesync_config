@@ -1,0 +1,24 @@
+#!/bin/sh
+# Run the autocorrecting linters of a module and regenerate its REFERENCE.md.
+#
+# Meant to be used as msync pre_commit_script, which passes the module directory:
+#   bundle exec msync update --pre-commit-script bin/autofix --message "..."
+# It also works with `msync exec bin/autofix` or by hand: bin/autofix modules/voxpupuli/puppet-foo
+
+set -e
+
+cd "${1:-.}"
+
+# Share installed gems between modules instead of installing them in every checkout
+export BUNDLE_PATH="${AUTOFIX_BUNDLE_PATH:-${XDG_CACHE_HOME:-$HOME/.cache}/modulesync_config/bundle}"
+export BUNDLE_WITHOUT=development:system_tests
+
+bundle install --quiet
+
+# Leftover offenses that can't be autocorrected should not block the update
+bundle exec rake rubocop:autocorrect || echo "WARNING: rubocop offenses remain in $(basename "$PWD")" >&2
+bundle exec rake lint_fix || echo "WARNING: puppet-lint offenses remain in $(basename "$PWD")" >&2
+
+if [ -f REFERENCE.md ]; then
+  bundle exec rake strings:generate:reference
+fi

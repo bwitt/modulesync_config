@@ -61,6 +61,18 @@ export GITHUB_TOKEN=token
 bundle exec msync update --message "modulesync $(git describe)" --pr --pr-labels modulesync --pr-title "modulesync $(git describe)"
 ```
 
+### Running autocorrecting linters
+
+`bin/autofix` runs `rubocop:autocorrect` and `lint_fix`, and regenerates `REFERENCE.md` if the module has one.
+Pass it as pre-commit script to commit its changes together with the modulesync changes:
+
+```bash
+bundle exec msync update --message "modulesync $(git describe)" --pre-commit-script bin/autofix
+```
+
+Gems are installed in `~/.cache/modulesync_config/bundle`, shared between all modules; set `AUTOFIX_BUNDLE_PATH` to use another directory.
+Offenses that can't be autocorrected are reported as warnings and don't stop the update.
+
 ### Create a new module
 
 It is possible to create a new module using msync.
